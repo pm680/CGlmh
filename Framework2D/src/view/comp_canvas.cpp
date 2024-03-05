@@ -6,6 +6,9 @@
 #include "imgui.h"
 #include "view/shapes/line.h"
 #include "view/shapes/rect.h"
+#include "view/shapes/ellipse.h"
+#include "view/shapes/polygon.h"
+#include "view/shapes/freehand.h"
 
 namespace USTC_CG
 {
@@ -54,6 +57,24 @@ void Canvas::set_rect()
     shape_type_ = kRect;
 }
 
+void Canvas::set_ellipse()
+{
+    draw_status_ = false;
+    shape_type_ = kEllipse;
+}
+
+void Canvas::set_polygon()
+{
+    draw_status_ = false;
+    shape_type_ = kPolygon;
+}
+
+void Canvas::set_freehand()
+{
+    draw_status_ = false;
+    shape_type_ = kFreehand;
+}
+
 void Canvas::clear_shape_list()
 {
     shape_list_.clear();
@@ -99,10 +120,10 @@ void Canvas::draw_shapes()
 void Canvas::mouse_click_event()
 {
     // HW1_TODO: Drawing rule for more primitives
-    if (!draw_status_)
+    if(!draw_status_)
     {
         draw_status_ = true;
-        start_point_ = end_point_ = mouse_pos_in_canvas();
+        start_point_ = end_point_ = ImGui::GetMousePos();
         switch (shape_type_)
         {
             case USTC_CG::Canvas::kDefault:
@@ -121,12 +142,42 @@ void Canvas::mouse_click_event()
                     start_point_.x, start_point_.y, end_point_.x, end_point_.y);
                 break;
             }
-             
+            case USTC_CG::Canvas::kEllipse:
+            {
+                current_shape_ = std::make_shared<Ellipse>(
+                    start_point_.x, start_point_.y, end_point_.x, end_point_.y);
+                break;
+            }
+            case USTC_CG::Canvas::kPolygon:
+            {
+                current_shape_ = std::make_shared<Polygon>(
+                    start_point_.x, start_point_.y, end_point_.x, end_point_.y);
+                break;
+            }
+            case USTC_CG::Canvas::kFreehand:
+            {
+                current_shape_ = std::make_shared<Freehand>(
+                    start_point_.x, start_point_.y, end_point_.x, end_point_.y);
+                break;
+            }
             default: break;
         }
     }
     else
-    {
+    {   
+        switch (shape_type_)
+        {
+        case kPolygon:
+            end_point_ = ImGui::GetMousePos();
+            if (current_shape_)
+            {
+                current_shape_->update(end_point_.x, end_point_.y);
+            }
+            break;
+        
+        default:
+            break;
+        }
         draw_status_ = false;
         if (current_shape_)
         {
@@ -141,7 +192,7 @@ void Canvas::mouse_move_event()
     // HW1_TODO: Drawing rule for more primitives
     if (draw_status_)
     {
-        end_point_ = mouse_pos_in_canvas();
+        end_point_ = ImGui::GetMousePos();
         if (current_shape_)
         {
             current_shape_->update(end_point_.x, end_point_.y);

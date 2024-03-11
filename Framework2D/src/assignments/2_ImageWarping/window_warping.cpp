@@ -70,12 +70,30 @@ void ImageWarping::draw_toolbar()
             p_image_->enable_selecting(true);
         }
         if (ImGui::MenuItem("Warping") && p_image_)
-        {
-            p_image_->enable_selecting(false);
-            p_image_->warping();
-            p_image_->init_selections();
+        {     
+            ImGui::OpenPopup("SubMenuWarping");
         }
         // HW2_TODO: You can add more interactions for IDW, RBF, etc.
+        if(ImGui::BeginPopup("SubMenuWarping"))
+        {
+            if (ImGui::MenuItem("WarpingIDW") && p_image_)
+            {   
+                p_image_->enable_selecting(false);
+                p_image_->set_idw();
+                p_image_->warping();
+                p_image_->init_selections();
+            }
+            if (ImGui::MenuItem("WarpingRBF") && p_image_)
+            {
+                p_image_->enable_selecting(false);
+                p_image_->set_rbf();
+                p_image_->warping();
+                p_image_->init_selections();
+            }
+            ImGui::EndPopup();
+        }
+        
+        
         ImGui::Separator();
         if (ImGui::MenuItem("Restore") && p_image_)
         {
@@ -85,7 +103,7 @@ void ImageWarping::draw_toolbar()
     }
 }
 void ImageWarping::draw_image()
-{
+{   
     const auto& canvas_min = ImGui::GetCursorScreenPos();
     const auto& canvas_size = ImGui::GetContentRegionAvail();
     const auto& image_size = p_image_->get_image_size();

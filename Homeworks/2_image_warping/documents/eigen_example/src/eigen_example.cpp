@@ -29,6 +29,6 @@ int main() {
   MatrixXf x = A.colPivHouseholderQr().solve(b);
 
   cout << x << endl;
-
+  system("pause");
   return 0;
 }

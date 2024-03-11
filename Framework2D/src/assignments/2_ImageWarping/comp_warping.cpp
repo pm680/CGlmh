@@ -1,4 +1,6 @@
 #include "comp_warping.h"
+#include "warping_idw.h"
+#include "warping_rbf.h"
 
 #include <cmath>
 
@@ -21,7 +23,14 @@ void CompWarping::draw()
     if (flag_enable_selecting_points_)
         select_points();
 }
-
+void CompWarping::set_idw()
+{
+    warping_algorithm_ = IDW;
+}
+void CompWarping::set_rbf()
+{
+    warping_algorithm_ = RBF;
+}
 void CompWarping::invert()
 {
     for (int i = 0; i < data_->width(); ++i)
@@ -129,13 +138,23 @@ void CompWarping::warping()
     // to (x', y') in the new image:
     // Note: For this transformation ("fish-eye" warping), one can also
     // calculate the inverse (x', y') -> (x, y) to fill in the "gaps".
+    switch (warping_algorithm_)
+    {
+    case IDW:
+        warping_alg_ = std::make_shared<WarpingIDW>(start_points_, end_points_);
+        break;
+    case RBF:
+        warping_alg_ = std::make_shared<WarpingRBF>(start_points_, end_points_);
+    default:
+        break;
+    }
+    
     for (int y = 0; y < data_->height(); ++y)
     {
         for (int x = 0; x < data_->width(); ++x)
         {
             // Apply warping function to (x, y), and we can get (x', y')
-            auto [new_x, new_y] =
-                fisheye_warping(x, y, data_->width(), data_->height());
+            auto [new_x, new_y] = warping_alg_ -> warping(x, y);
             // Copy the color from the original image to the result image
             if (new_x >= 0 && new_x < data_->width() && new_y >= 0 &&
                 new_y < data_->height())
@@ -234,7 +253,7 @@ CompWarping::fisheye_warping(int x, int y, int width, int height)
     float ratio = new_distance / distance;
     int new_x = static_cast<int>(center_x + dx * ratio);
     int new_y = static_cast<int>(center_y + dy * ratio);
-
+    
     return { new_x, new_y };
-}
+}   
 }  // namespace USTC_CG

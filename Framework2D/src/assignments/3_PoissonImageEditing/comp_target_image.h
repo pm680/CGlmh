@@ -17,6 +17,12 @@ class CompTargetImage : public ImageEditor
         kSeamless = 2
     };
 
+    enum Guidance
+    {
+        kGradient = 0,
+        kMixedGradient = 1
+    };
+
     explicit CompTargetImage(
         const std::string& label,
         const std::string& filename);

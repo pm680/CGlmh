@@ -2,6 +2,9 @@
 
 #include "comp_source_image.h"
 #include "view/comp_image.h"
+#include <Eigen/SparseCholesky>
+#include <iostream>
+#include <string>
 
 namespace USTC_CG
 {
@@ -14,6 +17,12 @@ class CompTargetImage : public ImageEditor
         kDefault = 0,
         kPaste = 1,
         kSeamless = 2
+    };
+
+    enum Guidance
+    {
+        kGradient = 0,
+        kMixedGradient = 1
     };
 
     explicit CompTargetImage(
@@ -34,6 +43,12 @@ class CompTargetImage : public ImageEditor
     // The clone function
     void clone();
 
+    void set_gradient();
+    void set_mixedgradient();
+    void seamless_predecomposition();
+    float guidance(int px, int py, int qx, int qy, int channel);
+    Eigen::MatrixXf seamless_solve();
+
    private:
     // Store the original image data
     std::shared_ptr<Image> back_up_;
@@ -44,6 +59,9 @@ class CompTargetImage : public ImageEditor
     ImVec2 mouse_position_;
     bool edit_status_ = false;
     bool flag_realtime_updating = false;
+
+    Eigen::SimplicialLDLT<Eigen::SparseMatrix<float>> ldlt_;
+    Guidance guidance_type_;
 };
 
 }  // namespace USTC_CG

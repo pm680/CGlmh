@@ -129,4 +129,8 @@ ImVec2 CompSourceImage::get_position() const
 {
     return start_;
 }
+ImVec2 CompSourceImage::get_position_end() const
+{
+    return end_;
+}
 }  // namespace USTC_CG

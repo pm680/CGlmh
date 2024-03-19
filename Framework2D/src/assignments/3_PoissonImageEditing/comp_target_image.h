@@ -2,6 +2,7 @@
 
 #include "comp_source_image.h"
 #include "view/comp_image.h"
+#include "seamless.h"
 
 namespace USTC_CG
 {
@@ -34,6 +35,9 @@ class CompTargetImage : public ImageEditor
     // The clone function
     void clone();
 
+    void set_gradient();
+    void set_mixed_gradient();
+    
    private:
     // Store the original image data
     std::shared_ptr<Image> back_up_;
@@ -44,6 +48,7 @@ class CompTargetImage : public ImageEditor
     ImVec2 mouse_position_;
     bool edit_status_ = false;
     bool flag_realtime_updating = false;
-};
 
+    std::shared_ptr<Seamless> seamless_;
+};
 }  // namespace USTC_CG

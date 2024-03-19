@@ -93,6 +93,23 @@ void WindowPoisson::draw_toolbar()
             "clone the selected region to the target image.");
         // HW3_TODO: You may add more items in the menu for the different types
         // of Poisson editing.
+        if (ImGui::MenuItem("Seamless") && p_target_ && p_source_)
+        {
+            p_target_->set_seamless();
+            ImGui::OpenPopup("SubMenuSeamless");
+        }
+        if (ImGui::BeginPopup("SubMenuSeamless"))
+        {
+            if(ImGui::MenuItem("Gradient"))
+            {
+                p_target_->set_gradient();
+            }
+            if(ImGui::MenuItem("MixedGradient"))
+            {
+                p_target_->set_mixed_gradient();
+            }
+            ImGui::EndPopup();
+        }
 
         ImGui::EndMainMenuBar();
     }

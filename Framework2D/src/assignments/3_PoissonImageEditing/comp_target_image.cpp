@@ -1,5 +1,5 @@
 #include "comp_target_image.h"
-
+#include <Eigen/SparseCholesky>
 #include <cmath>
 
 namespace USTC_CG
@@ -75,8 +75,18 @@ void CompTargetImage::set_paste()
 void CompTargetImage::set_seamless()
 {
     clone_type_ = kSeamless;
+    seamless_ = std::make_shared<Seamless>(source_image_, data_);
+    seamless_->selected_position();
+    seamless_->predecomposition();
 }
-
+void CompTargetImage::set_gradient()
+{
+    seamless_->set_gradient();
+}
+void CompTargetImage::set_mixed_gradient()
+{
+    seamless_->set_mixed_gradient();
+}
 void CompTargetImage::clone()
 {
     // The implementation of different types of cloning
@@ -127,7 +137,12 @@ void CompTargetImage::clone()
             // cloning. For each pixel in the selected region, calculate the
             // final RGB color by solving Poisson Equations.
             restore();
-
+            
+            seamless_->set_mouse_position(mouse_position_);
+            seamless_->selected_position();
+            Eigen::MatrixXf seamless_pixel = seamless_->solve();
+            std::vector<uchar> seamless_pixelValues(3);
+     
             for (int i = 0; i < mask->width(); ++i)
             {
                 for (int j = 0; j < mask->height(); ++j)
@@ -138,17 +153,27 @@ void CompTargetImage::clone()
                     int tar_y =
                         static_cast<int>(mouse_position_.y) + j -
                         static_cast<int>(source_image_->get_position().y);
+                    int selected_x = i - static_cast<int>(source_image_->get_position().x);
+                    int selected_y = j - static_cast<int>(source_image_->get_position().y);
+                    int selected_W = static_cast<int>(source_image_->get_position_end().x) - 
+                                        static_cast<int>(source_image_->get_position().x);   
+                    int selected_i = selected_x + selected_W * selected_y;
                     if (0 <= tar_x && tar_x < image_width_ && 0 <= tar_y &&
                         tar_y < image_height_ && mask->get_pixel(i, j)[0] > 0)
-                    {
+                    {      
+                        for(int channel = 0; channel < 3; ++channel)
+                        {
+                            seamless_pixelValues[channel] = 
+                                static_cast<unsigned char>
+                                (seamless_pixel.col(channel)(selected_i));
+                        }
                         data_->set_pixel(
                             tar_x,
                             tar_y,
-                            source_image_->get_data()->get_pixel(i, j));
+                            seamless_pixelValues);
                     }
                 }
             }
-
             break;
         }
         default: break;
@@ -156,5 +181,4 @@ void CompTargetImage::clone()
 
     update();
 }
-
 }  // namespace USTC_CG

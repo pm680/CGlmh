@@ -14,7 +14,7 @@ message(STATUS "Started CMake for ${PROJECT_NAME} v${PROJECT_VERSION}...\n")
 #set(BUILD_SHARED_LIBS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
+  set(CMAKE_BUILD_TYPE "Release")
 endif()
 
 set(FRAMEWORK2D_DIR "${PROJECT_SOURCE_DIR}")

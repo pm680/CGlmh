@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework2D/third_party/ImGuiFileDialog" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework2D/third_party/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework2D/third_party/imgui" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework3D/external/OpenMesh" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework3D/external/eigen" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework3D/external/glfw" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework3D/external/googletest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Framework3D/external/imgui" vcs="Git" />
+  </component>
+</project>

@@ -48,7 +48,6 @@ static void node_map_boundary_to_circle_exec(ExeParams params)
     if (!input.get_component<MeshComponent>()) {
         throw std::runtime_error("Boundary Mapping: Need Geometry Input.");
     }
-    throw std::runtime_error("Not implemented");
 
     /* ----------------------------- Preprocess -------------------------------
     ** Create a halfedge structure (using OpenMesh) for the input mesh. The
@@ -80,6 +79,56 @@ static void node_map_boundary_to_circle_exec(ExeParams params)
     ** Note: It would be better to normalize the boundary to a unit circle in [0,1]x[0,1] for
     ** texture mapping.
     */
+    std::vector<float> length;
+    float TotalLength = 0.f;
+    float radius = 1.f;
+    for(const auto he_start : halfedge_mesh->halfedges())
+    {
+        if(halfedge_mesh->is_boundary(he_start))
+        {
+            auto he = he_start;
+            do
+            {
+                length.push_back((halfedge_mesh->point(he.to()) - 
+                                        halfedge_mesh->point(he.from())).length() / (2 * radius));
+                TotalLength += length.back();
+                he = he.next();
+            } while(he != he_start);
+            break;
+        }
+    }
+
+    float r;
+    float angle = 0.f;
+    OpenMesh::Vec3f start_pos;
+    OpenMesh::Vec3f new_pos;
+    for(const auto he_start : halfedge_mesh->halfedges())
+    {
+        if(halfedge_mesh->is_boundary(he_start))
+        {
+            r = sqrtf(pow(halfedge_mesh->point(he_start.from())[0], 2)
+                     + pow(halfedge_mesh->point(he_start.from())[1], 2));
+            start_pos[0] = radius * halfedge_mesh->point(he_start.from())[0] / r;
+            start_pos[1] = radius * halfedge_mesh->point(he_start.from())[1] / r;
+            start_pos[2] = halfedge_mesh->point(he_start.from())[2];
+            halfedge_mesh->set_point(he_start.from(), start_pos);
+            auto he = he_start;
+            auto length_it = length.begin();
+            do
+            {
+                angle = 2.0 * M_PI * *length_it / TotalLength; 
+                new_pos[0] = halfedge_mesh->point(he.from())[0] * cosf(angle)
+                            - halfedge_mesh->point(he.from())[1] * sinf(angle);
+                new_pos[1] = halfedge_mesh->point(he.from())[1] * cosf(angle)
+                            + halfedge_mesh->point(he.from())[0] * sinf(angle);
+                new_pos[2] = start_pos[2];
+                halfedge_mesh->set_point(he.to(), new_pos);
+                ++length_it;
+                he = he.next();
+            } while(he != he_start);
+            break;
+        }
+    }
 
     /* ----------------------------- Postprocess ------------------------------
     ** Convert the result mesh from the halfedge structure back to GOperandBase format as the node's
@@ -118,7 +167,6 @@ static void node_map_boundary_to_square_exec(ExeParams params)
     if (!input.get_component<MeshComponent>()) {
         throw std::runtime_error("Input does not contain a mesh");
     }
-    throw std::runtime_error("Not implemented");
 
     /* ----------------------------- Preprocess -------------------------------
     ** Create a halfedge structure (using OpenMesh) for the input mesh.
@@ -138,6 +186,88 @@ static void node_map_boundary_to_square_exec(ExeParams params)
     ** Note: It would be better to normalize the boundary to a unit circle in [0,1]x[0,1] for
     ** texture mapping.
     */
+    std::vector<float> length;
+    float TotalLength = 0.f;
+    for(const auto he_start : halfedge_mesh->halfedges())
+    {
+        if(halfedge_mesh->is_boundary(he_start))
+        {
+            auto he = he_start;
+            do
+            {
+                length.push_back(
+                    (halfedge_mesh->point(he.to()) - halfedge_mesh->point(he.from())).length());
+                TotalLength += length.back();
+                he = he.next();
+            } while(he != he_start);
+            break;
+        }
+    }
+
+    float r_former = 0.f, r_letter = 0.f;
+    float a = 1.f;
+    OpenMesh::Vec3f new_pos;
+    for(const auto he_start : halfedge_mesh->halfedges())
+    {
+        if(halfedge_mesh->is_boundary(he_start))
+        {
+            auto he = he_start;
+            auto length_it = length.begin();
+            do
+            {
+                switch (static_cast<int>(4 * r_letter))
+                { 
+                case 0:
+                    new_pos[0] = 4 * r_letter * a;
+                    new_pos[1] = 0;
+                    new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                    break;
+                case 1:  
+                    if(r_former < 0.25)
+                    {
+                        new_pos[0] = a;
+                        new_pos[1] = 0;
+                        new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                        break;
+                    }
+                    new_pos[0] = a;
+                    new_pos[1] = (4 * r_letter - 1) * a;
+                    new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                    break;
+                case 2:
+                    if(r_former < 0.50)
+                    {
+                        new_pos[0] = a;
+                        new_pos[1] = a;
+                        new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                        break;
+                    }
+                    new_pos[0] = (3 - 4 * r_letter) * a;
+                    new_pos[1] = a;
+                    new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                    break;
+                case 3:
+                    if(r_former < 0.75)
+                    {
+                        new_pos[0] = 0;
+                        new_pos[1] = a;
+                        new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                        break;
+                    }
+                    new_pos[0] = 0;
+                    new_pos[1] = (4 - 4 * r_letter) * a;
+                    new_pos[2] = halfedge_mesh->point(he_start.from())[2];
+                    break;
+                default: break;
+                }
+                if(r_letter > 0) r_former += *length_it / TotalLength;
+                r_letter += *length_it / TotalLength;
+                halfedge_mesh->set_point(he.to(), new_pos);
+                he = he.next();
+            } while(he != he_start);
+            break;
+        }
+    }
 
     /* ----------------------------- Postprocess ------------------------------
     ** Convert the result mesh from the halfedge structure back to GOperandBase format as the node's

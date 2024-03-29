@@ -24,7 +24,6 @@ static void node_exec(ExeParams params)
     material->textures.clear();
     material->textures.push_back(texture);
     geometry.attach_component(material);
-
     params.set_output("Geometry", std::move(geometry));
 }
 

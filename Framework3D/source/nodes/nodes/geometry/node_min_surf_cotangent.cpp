@@ -111,15 +111,14 @@ static void node_min_surf_exec(ExeParams params)
     auto min_surf_cal = std::make_shared<MinSurfCal>(original_mesh, halfedge_mesh);
     min_surf_cal->set_cotangent();
     Eigen::MatrixXf new_pos = min_surf_cal->solve();
-    OpenMesh::Vec3f pos;
     for(auto& vh : halfedge_mesh->vertices())
     {
+        OpenMesh::Vec3f pos;
         pos[0] = new_pos(vh.idx(), 0);
         pos[1] = new_pos(vh.idx(), 1);
         pos[2] = new_pos(vh.idx(), 2);
         halfedge_mesh->set_point(vh, pos);
     }
-
     /* ----------------------------- Postprocess ------------------------------
     ** Convert the minimal surface mesh from the halfedge structure back to
     ** GOperandBase format as the node's output.

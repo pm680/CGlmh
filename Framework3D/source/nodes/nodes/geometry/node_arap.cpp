@@ -4,6 +4,8 @@
 #include "Nodes/node_register.h"
 #include "geom_node_base.h"
 #include "utils/util_openmesh_bind.h"
+#include "utils/arap.h"
+
 
 /*
 ** @brief HW5_ARAP_Parameterization
@@ -49,6 +51,7 @@ static void node_arap_declare(NodeDeclarationBuilder& b)
 
     // Output-1: The UV coordinate of the mesh, provided by ARAP algorithm
     b.add_output<decl::Float2Buffer>("OutputUV");
+    b.add_output<decl::Geometry>("Mesh");
 }
 
 static void node_arap_exec(ExeParams params)
@@ -60,7 +63,6 @@ static void node_arap_exec(ExeParams params)
     if (!input.get_component<MeshComponent>()) {
         throw std::runtime_error("Need Geometry Input.");
     }
-    throw std::runtime_error("Not implemented");
 
     /* ----------------------------- Preprocess -------------------------------
     ** Create a halfedge structure (using OpenMesh) for the input mesh. The
@@ -69,6 +71,7 @@ static void node_arap_exec(ExeParams params)
     ** mesh elements.
     */
     auto halfedge_mesh = operand_to_openmesh(&input);
+    auto mesh = input.get_component<MeshComponent>();
 
    /* ------------- [HW5_TODO] ARAP Parameterization Implementation -----------
    ** Implement ARAP mesh parameterization to minimize local distortion.
@@ -91,9 +94,21 @@ static void node_arap_exec(ExeParams params)
 
     // The result UV coordinates 
     pxr::VtArray<pxr::GfVec2f> uv_result;
+    auto arap = std::make_shared<ARAP>(halfedge_mesh, mesh->texcoordsArray);
+    uv_result = arap->iteration();
+    for(auto& vh : halfedge_mesh->vertices())
+    {
+        OpenMesh::Vec3f pos;
+        pos[0] = uv_result[vh.idx()][0];
+        pos[1] = uv_result[vh.idx()][1];
+        pos[2] = 0.;
+        halfedge_mesh->set_point(vh, pos);
+    }
 
+    auto operand_base = openmesh_to_operand(halfedge_mesh.get());
     // Set the output of the node
     params.set_output("OutputUV", uv_result);
+    params.set_output("Mesh", std::move(*operand_base));
 }
 
 static void node_register()

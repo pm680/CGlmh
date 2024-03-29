@@ -4,6 +4,7 @@
 #include "Nodes/node_declare.hpp"
 #include "Nodes/node_register.h"
 #include "geom_node_base.h"
+#include <iostream>
 
 namespace USTC_CG::node_mesh_compose {
 static void node_declare(NodeDeclarationBuilder& b)

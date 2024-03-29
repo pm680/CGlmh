@@ -32,6 +32,7 @@ class MinSurfCal
     std::shared_ptr<PolyMesh> original_mesh_;
     std::shared_ptr<PolyMesh> mesh_;
     size_t NSize;
+    size_t TSize;
 
     WeightType weight_type_;
 

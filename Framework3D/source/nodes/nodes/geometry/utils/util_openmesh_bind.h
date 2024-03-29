@@ -1,6 +1,7 @@
 #pragma once
 
 #include <OpenMesh/Core/Mesh/PolyMesh_ArrayKernelT.hh>
+#include <OpenMesh/Core/IO/MeshIO.hh>
 #include <memory>
 
 #include "GCore/GOP.h"

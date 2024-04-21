@@ -25,14 +25,15 @@
 #define EXTRAS_IMAGING_EXAMPLES_HD_TINY_MESH_H
 
 #include "context.h"
-#include "meshSamplers.h"
 #include "embree4/rtcore.h"
-#include "pxr/pxr.h"
+#include "meshSamplers.h"
 #include "pxr/base/gf/matrix4f.h"
 #include "pxr/imaging/hd/mesh.h"
 #include "pxr/imaging/hd/vertexAdjacency.h"
+#include "pxr/pxr.h"
 
-PXR_NAMESPACE_OPEN_SCOPE
+USTC_CG_NAMESPACE_OPEN_SCOPE
+using namespace pxr;
 /// \class Hd_USTC_CG_Mesh
 ///
 /// This class is an example of a Hydra Rprim, or renderable object, and it
@@ -52,9 +53,8 @@ PXR_NAMESPACE_OPEN_SCOPE
 /// can do the heavy work of releasing state (such as handles into the top-level
 /// scene), so that object population and existence aren't tied to each other.
 ///
-class Hd_USTC_CG_Mesh final : public HdMesh
-{
-public:
+class Hd_USTC_CG_Mesh final : public HdMesh {
+   public:
     HF_MALLOC_TAG_NEW("new Hd_USTC_CG_Mesh");
 
     /// Hd_USTC_CG_Mesh constructor.
@@ -62,7 +62,7 @@ public:
     Hd_USTC_CG_Mesh(const SdfPath& id);
 
     /// Hd_USTC_CG_Mesh destructor.
-    ~Hd_USTC_CG_Mesh() override = default;
+    ~Hd_USTC_CG_Mesh() override;
 
     /// Inform the scene graph which state needs to be downloaded in the
     /// first Sync() call: in this case, topology and points data to build
@@ -75,37 +75,15 @@ public:
         HdInterpolation interpolation,
         bool refined);
 
-    /// Pull invalidated scene data and prepare/update the renderable
-    /// representation.
-    ///
-    /// This function is told which scene data to pull through the
-    /// dirtyBits parameter. The first time it's called, dirtyBits comes
-    /// from _GetInitialDirtyBits(), which provides initial dirty state,
-    /// but after that it's driven by invalidation tracking in the scene
-    /// delegate.
-    ///
-    /// The contract for this function is that the prim can only pull on scene
-    /// delegate buffers that are marked dirty. Scene delegates can and do
-    /// implement just-in-time data schemes that mean that pulling on clean
-    /// data will be at best incorrect, and at worst a crash.
-    ///
-    /// This function is called in parallel from worker threads, so it needs
-    /// to be threadsafe; calls into HdSceneDelegate are ok.
-    ///
-    /// Reprs are used by hydra for controlling per-item draw settings like
-    /// flat/smooth shaded, wireframe, refined, etc.
-    ///   \param sceneDelegate The data source for this geometry item.
-    ///   \param renderParam State.
-    ///   \param dirtyBits A specifier for which scene data has changed.
-    ///   \param reprToken A specifier for which representation to draw with.
-    ///
     void Sync(
         HdSceneDelegate* sceneDelegate,
         HdRenderParam* renderParam,
         HdDirtyBits* dirtyBits,
         const TfToken& reprToken) override;
 
-protected:
+    void Finalize(HdRenderParam* renderParam) override;
+
+   protected:
     // Initialize the given representation of this Rprim.
     // This is called prior to syncing the prim, the first time the repr
     // is used.
@@ -118,9 +96,9 @@ protected:
     // repr is synced.  InitRepr occurs before dirty bit propagation.
     //
     // See HdRprim::InitRepr()
-    void _InitRepr(
-        const TfToken& reprToken,
-        HdDirtyBits* dirtyBits) override;
+    void _InitRepr(const TfToken& reprToken, HdDirtyBits* dirtyBits) override;
+
+    void _SetMaterialId(HdSceneDelegate* scene_delegate, Hd_USTC_CG_Mesh* hd_ustc_cg_mesh);
 
     // This callback from Rprim gives the prim an opportunity to set
     // additional dirty bits based on those already set.  This is done
@@ -136,25 +114,23 @@ protected:
     TfTokenVector _UpdateComputedPrimvarSources(
         HdSceneDelegate* sceneDelegate,
         HdDirtyBits dirtyBits);
-    void _UpdatePrimvarSources(
-        HdSceneDelegate* sceneDelegate,
-        HdDirtyBits dirtyBits);
+    void _UpdatePrimvarSources(HdSceneDelegate* sceneDelegate, HdDirtyBits dirtyBits);
     RTCGeometry _CreateEmbreeSubdivMesh(RTCScene scene, RTCDevice device);
     RTCGeometry _CreateEmbreeTriangleMesh(RTCScene scene, RTCDevice device);
 
     // This class does not support copying.
     Hd_USTC_CG_Mesh(const Hd_USTC_CG_Mesh&) = delete;
-    Hd_USTC_CG_Mesh& operator =(const Hd_USTC_CG_Mesh&) = delete;
+    Hd_USTC_CG_Mesh& operator=(const Hd_USTC_CG_Mesh&) = delete;
 
-private:
+   private:
     void _PopulateRtMesh(
         HdSceneDelegate* sceneDelegate,
         RTCScene scene,
         RTCDevice device,
         HdDirtyBits* dirtyBits,
         const HdMeshReprDesc& desc);
-    HdEmbreePrototypeContext* _GetPrototypeContext();
-    HdEmbreeInstanceContext* _GetInstanceContext(RTCScene scene, size_t i);
+    Hd_USTC_CG_PrototypeContext* _GetPrototypeContext();
+    Hd_USTC_CG_InstanceContext* _GetInstanceContext(RTCScene scene, size_t i);
 
     // Cached scene data. VtArrays are reference counted, so as long as we
     // only call const accessors keeping them around doesn't incur a buffer
@@ -198,7 +174,7 @@ private:
     RTCGeometry _geometry;
     bool _normalsValid;
     Hd_VertexAdjacency _adjacency;
-    VtVec3fArray _computedNormals;
+    VtVec3fArray computedNormals;
 
     bool _adjacencyValid;
     bool _refined;
@@ -206,15 +182,13 @@ private:
     // An embree intersection filter callback, for doing backface culling.
     static void _EmbreeCullFaces(const RTCFilterFunctionNArguments* args);
 
-    HdEmbreeRTCBufferAllocator _embreeBufferAllocator;
-
+    Hd_USTC_CG_RTCBufferAllocator _embreeBufferAllocator;
 
     // A local cache of primvar scene data. "data" is a copy-on-write handle to
     // the actual primvar buffer, and "interpolation" is the interpolation mode
     // to be used. This cache is used in _PopulateRtMesh to populate the
     // primvar sampler map in the prototype context, which is used for shading.
-    struct PrimvarSource
-    {
+    struct PrimvarSource {
         VtValue data;
         HdInterpolation interpolation;
     };
@@ -222,6 +196,6 @@ private:
     TfHashMap<TfToken, PrimvarSource, TfToken::HashFunctor> _primvarSourceMap;
 };
 
-PXR_NAMESPACE_CLOSE_SCOPE
+USTC_CG_NAMESPACE_CLOSE_SCOPE
 
-#endif // EXTRAS_IMAGING_EXAMPLES_HD_TINY_MESH_H
+#endif  // EXTRAS_IMAGING_EXAMPLES_HD_TINY_MESH_H

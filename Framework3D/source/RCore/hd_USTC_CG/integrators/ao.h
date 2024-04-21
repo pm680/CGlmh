@@ -3,10 +3,14 @@
 #include <random>
 
 #include "integrator.h"
+#include "renderParam.h"
+#include "renderer.h"
 #include "pxr/pxr.h"
 #include "pxr/base/gf/ray.h"
 
-PXR_NAMESPACE_OPEN_SCOPE
+USTC_CG_NAMESPACE_OPEN_SCOPE
+class SurfaceInteraction;
+using namespace pxr;
 class AOIntegrator : public SamplingIntegrator
 {
 public:
@@ -19,8 +23,9 @@ public:
     }
 
 protected:
+    
     VtValue Li(const GfRay& ray, std::default_random_engine& uniform_float)
     override;
 };
 
-PXR_NAMESPACE_CLOSE_SCOPE
+USTC_CG_NAMESPACE_CLOSE_SCOPE

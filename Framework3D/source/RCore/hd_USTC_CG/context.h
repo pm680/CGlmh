@@ -23,44 +23,42 @@
 //
 #ifndef PXR_IMAGING_PLUGIN_HD_EMBREE_CONTEXT_H
 #define PXR_IMAGING_PLUGIN_HD_EMBREE_CONTEXT_H
-
-#include "pxr/pxr.h"
-
-#include "sampler.h"
-
-#include "pxr/base/gf/matrix4f.h"
-#include "pxr/base/vt/array.h"
-
 #include <embree4/rtcore.h>
 
+#include "USTC_CG.h"
+#include "pxr/base/gf/matrix4f.h"
+#include "pxr/base/vt/array.h"
+#include "pxr/pxr.h"
+#include "sampler.h"
+
 PXR_NAMESPACE_OPEN_SCOPE
-
 class HdRprim;
+PXR_NAMESPACE_CLOSE_SCOPE
 
-/// \class HdEmbreePrototypeContext
+USTC_CG_NAMESPACE_OPEN_SCOPE
+using namespace pxr;
+
+/// \class Hd_USTC_CG_PrototypeContext
 ///
 /// A small bit of state attached to each bit of prototype geometry in embree,
-/// for the benefit of HdEmbreeRenderer::_TraceRay.
+/// for the benefit of Hd_USTC_CG_Renderer::_TraceRay.
 ///
-struct HdEmbreePrototypeContext
-{
-    /// A pointer back to the owning HdEmbree rprim.
+struct Hd_USTC_CG_PrototypeContext {
+    /// A pointer back to the owning Hd_USTC_CG_ rprim.
     HdRprim *rprim;
     /// A name-indexed map of primvar samplers.
-    TfHashMap<TfToken, HdEmbreePrimvarSampler*, TfToken::HashFunctor>
-        primvarMap;
+    TfHashMap<TfToken, Hd_USTC_CG_PrimvarSampler *, TfToken::HashFunctor> primvarMap;
     /// A copy of the primitive params for this rprim.
     VtIntArray primitiveParams;
 };
 
 ///
-/// \class HdEmbreeInstanceContext
+/// \class Hd_USTC_CG_InstanceContext
 ///
 /// A small bit of state attached to each bit of instanced geometry in embree,
-/// for the benefit of HdEmbreeRenderer::_TraceRay.
+/// for the benefit of Hd_USTC_CG_Renderer::_TraceRay.
 ///
-struct HdEmbreeInstanceContext
-{
+struct Hd_USTC_CG_InstanceContext {
     /// The object-to-world transform, for transforming normals to worldspace.
     GfMatrix4f objectToWorldMatrix;
     /// The scene the prototype geometry lives in, for passing to
@@ -70,7 +68,6 @@ struct HdEmbreeInstanceContext
     int32_t instanceId;
 };
 
+USTC_CG_NAMESPACE_CLOSE_SCOPE
 
-PXR_NAMESPACE_CLOSE_SCOPE
-
-#endif // PXR_IMAGING_PLUGIN_HD_EMBREE_CONTEXT_H
+#endif  // PXR_IMAGING_PLUGIN_HD_EMBREE_CONTEXT_H

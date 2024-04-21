@@ -129,6 +129,8 @@ std::pair<bool, pxr::GfMatrix4f> FirstPersonCamera::AnimateRoll(pxr::GfMatrix4f 
 
 void FirstPersonCamera::Animate(float deltaT)
 {
+    SetPerspectiveFromAspectRatioAndFieldOfView(
+        m_ViewportSize[0] / m_ViewportSize[1], 130/2, FOVHorizontal);
     // track mouse delta
     pxr::GfVec2f mouseMove = mousePos - mousePosPrev;
     mousePosPrev = mousePos;
@@ -146,7 +148,7 @@ void FirstPersonCamera::Animate(float deltaT)
         cameraRotation =
             pxr::GfMatrix4f(pxr::GfRotation(pxr::GfVec3f(0.f, 0.f, 1.f), -yaw), { 0, 0, 0 });
         cameraRotation =
-            cameraRotation * pxr::GfMatrix4f(pxr::GfRotation(m_CameraRight, pitch), { 0, 0, 0 });
+            cameraRotation * pxr::GfMatrix4f(pxr::GfRotation(m_CameraRight, -pitch), { 0, 0, 0 });
 
         cameraDirty = true;
     }
@@ -168,6 +170,9 @@ void FirstPersonCamera::Animate(float deltaT)
 
 void FirstPersonCamera::AnimateSmooth(float deltaT)
 {
+    SetPerspectiveFromAspectRatioAndFieldOfView(
+        m_ViewportSize[0] / m_ViewportSize[1], 130/2, FOVHorizontal);
+
     const float c_DampeningRate = 7.5f;
     float dampenWeight = exp(-c_DampeningRate * deltaT);
 
@@ -362,7 +367,7 @@ pxr::GfQuatf rotationQuat(const pxr::GfVec3f& euler)
 void ThirdPersonCamera::Animate(float deltaT)
 {
     SetPerspectiveFromAspectRatioAndFieldOfView(
-        m_ViewportSize[0] / m_ViewportSize[1], 67, FOVHorizontal);
+        m_ViewportSize[0] / m_ViewportSize[1], 130, FOVHorizontal);
     m_ProjectionMatrix = pxr::GfMatrix4f(GetFrustum().ComputeProjectionMatrix());
     m_InverseProjectionMatrix = m_ProjectionMatrix.GetInverse();
     AnimateOrbit(deltaT);

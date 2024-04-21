@@ -21,12 +21,15 @@
 // KIND, either express or implied. See the Apache License for the specific
 // language governing permissions and limitations under the Apache License.
 //
+#include "USTC_CG.h"
+
 #include "sampler.h"
 
-PXR_NAMESPACE_OPEN_SCOPE
+USTC_CG_NAMESPACE_OPEN_SCOPE
+using namespace pxr;
 
 bool
-HdEmbreeBufferSampler::Sample(int index, void* value,
+Hd_USTC_CG_BufferSampler::Sample(int index, void* value,
                               HdTupleType dataType) const
 {
     // Sanity checks: index is within the bounds of buffer,
@@ -69,7 +72,7 @@ _InterpolateImpl(void* out, void** samples, float* weights,
 }
 
 /* static */ bool
-HdEmbreePrimvarSampler::_Interpolate(void* out, void** samples, float* weights,
+Hd_USTC_CG_PrimvarSampler::_Interpolate(void* out, void** samples, float* weights,
     size_t sampleCount, HdTupleType dataType)
 {
     // Combine maps from component type tag to C++ type, and delegates to
@@ -118,4 +121,4 @@ HdEmbreePrimvarSampler::_Interpolate(void* out, void** samples, float* weights,
     }
 }
 
-PXR_NAMESPACE_CLOSE_SCOPE
+USTC_CG_NAMESPACE_CLOSE_SCOPE

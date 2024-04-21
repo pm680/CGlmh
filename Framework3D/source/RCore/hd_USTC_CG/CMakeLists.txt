@@ -1,18 +1,7 @@
 set(PXR_PREFIX pxr/imaging)
 set(PXR_PACKAGE hd_USTC_CG)
 
-list(APPEND CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/defaults
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/modules
-    ${CMAKE_CURRENT_LIST_DIR}/cmake/macros)
-
 message("hd_USTC_CG at ${CMAKE_CURRENT_LIST_DIR}")
-
-include(pxrPlugin)
-
-add_custom_target(shared_libs)
-
-message("TBB_tbb_LIBRARY: ${TBB_tbb_LIBRARY}")
 
 pxr_plugin(${PXR_PACKAGE}
    LIBRARIES
@@ -27,13 +16,14 @@ pxr_plugin(${PXR_PACKAGE}
         ${TBB_tbb_LIBRARY}
         embree
         usdLux
+        RCore
+        usdImaging
 
     INCLUDE_DIRS
         ${TBB_INCLUDE_DIRS}
 
     PUBLIC_CLASSES
         renderer
-        rendererEmbree
         renderDelegate
         rendererPlugin
         renderPass
@@ -42,11 +32,14 @@ pxr_plugin(${PXR_PACKAGE}
         sampler
         instancer
         integrator
+        material
         camera
         light
+        texture
 
         integrators/ao
         integrators/direct
+        integrators/path
 
         geometries/mesh
         geometries/meshSamplers

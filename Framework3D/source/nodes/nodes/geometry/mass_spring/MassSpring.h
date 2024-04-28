@@ -1,9 +1,10 @@
 #pragma once 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <unordered_set>
+#include <set>
 #include "utils.h"
 #include <chrono>
+#include <algorithm>
 
 #define TIC(name) auto start_##name = std::chrono::high_resolution_clock::now(); 
 #define TOC(name) \
@@ -22,7 +23,7 @@ struct hashEdge {
 };
 
 using namespace Eigen;
-using EdgeSet = std::unordered_set<Edge, hashEdge>;
+using EdgeSet = std::set<Edge>;
 using MatrixXd = Eigen::MatrixXd;
 using SparseMatrix_d = Eigen::SparseMatrix<double>;
 using Trip_d = Eigen::Triplet<double>;
@@ -46,7 +47,7 @@ class MassSpring {
     virtual Eigen::SparseMatrix<double> computeHessianSparse(double stiffness);
 
     // make matrix positive definite
-    // Eigen::SparseMatrix<double> makeSPD(const Eigen::SparseMatrix<double> &A);
+    Eigen::SparseMatrix<double> makeSPD(const Eigen::SparseMatrix<double> &A);
     bool checkSPD(const Eigen::SparseMatrix<double> &A);
 
     Eigen::MatrixXd getVelocity() const

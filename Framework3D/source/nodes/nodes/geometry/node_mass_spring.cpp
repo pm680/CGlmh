@@ -3,7 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <unordered_set>
+#include <set>
 
 #include "GCore/Components/MeshOperand.h"
 #include "Nodes/node.hpp"
@@ -18,7 +18,7 @@ namespace USTC_CG::node_mass_spring {
 
 // -------------------- helper functions (No need to modify) --------------------
 
-using EdgeSet = std::unordered_set<Edge, hashEdge>;
+using EdgeSet = std::set<Edge>;
 
 Eigen::MatrixXi usd_faces_to_eigen(
     const pxr::VtArray<int>& faceVertexCount,

@@ -34,34 +34,58 @@ void MassSpring::step()
     unsigned n_vertices = X.rows();
 
     // The reason to not use 1.0 as mass per vertex: the cloth gets heavier as we increase the resolution
-    double mass_per_vertex =
-        mass / n_vertices; 
+    double mass_per_vertex = mass / n_vertices; 
 
     //----------------------------------------------------
     // (HW Optional) Bonus part: Sphere collision
     Eigen::MatrixXd acceleration_collision =
-        getSphereCollisionForce(sphere_center.cast<double>(), sphere_radius);
+        getSphereCollisionForce(sphere_center.cast<double>(), sphere_radius) / mass_per_vertex;
     //----------------------------------------------------
 
     if (time_integrator == IMPLICIT_EULER) {
         // Implicit Euler
         TIC(step)
 
-        // (HW TODO) 
-        // auto H_elastic = computeHessianSparse(stiffness);  // size = [nx3, nx3]
+        // (HW TODO)
+        size_t size = 3 * n_vertices;
+        SparseMatrix_d M(size, size);
+        std::vector<Trip_d> TripletListM;
+        for (size_t i = 0; i < size; ++i) {
+            TripletListM.push_back(Trip_d(i, i, mass_per_vertex));
+        }
+        M.setFromTriplets(TripletListM.begin(), TripletListM.end());
+        SparseMatrix_d H_elastic =
+            M / pow(h, 2) + computeHessianSparse(stiffness);  // size = [nx3, nx3]
+        H_elastic = makeSPD(H_elastic);
+            
+        Eigen::initParallel();
+        Eigen::ConjugateGradient<SparseMatrix_d> solver(H_elastic);
 
-        // compute Y 
-
-        // Solve Newton's search direction with linear solver 
+        // Solve Newton's search direction with linear solver
+        MatrixXd f_int = -computeGrad(stiffness);
+        MatrixXd Y = X + h * vel;
+        Y.rowwise() += pow(h, 2) * acceleration_ext.transpose();
+        if (enable_sphere_collision) {
+            Y += acceleration_collision;
+        }
+        for (size_t i = 0; i < n_vertices; ++i) {
+            if (dirichlet_bc_mask[i])
+                Y.row(i) = X.row(i) - pow(h,2) * f_int.row(i) / mass_per_vertex;
+        } 
+        MatrixXd grad_g = -f_int + mass_per_vertex * (X - Y) / pow(h, 2); 
+        MatrixXd delta_X_flatten = -solver.solve(flatten(grad_g));
+        MatrixXd delta_X = unflatten(delta_X_flatten);
         
         // update X and vel 
+        X += delta_X;
+        vel = delta_X / h;
 
         TOC(step)
     }
     else if (time_integrator == SEMI_IMPLICIT_EULER) {
 
         // Semi-implicit Euler
-        Eigen::MatrixXd acceleration = -computeGrad(stiffness) / mass_per_vertex;
+        MatrixXd acceleration = -computeGrad(stiffness) / mass_per_vertex;
         acceleration.rowwise() += acceleration_ext.transpose();
 
         // -----------------------------------------------
@@ -72,9 +96,15 @@ void MassSpring::step()
         // -----------------------------------------------
 
         // (HW TODO): Implement semi-implicit Euler time integration
+        for (size_t i = 0; i < n_vertices; ++i) {
+            if (dirichlet_bc_mask[i])
+                acceleration.row(i).setZero();
+        }
 
         // Update X and vel 
-        
+        vel += h * acceleration;
+        vel *= damping;
+        X += h * vel;
     }
     else {
         std::cerr << "Unknown time integrator!" << std::endl;
@@ -107,7 +137,13 @@ Eigen::MatrixXd MassSpring::computeGrad(double stiffness)
     for (const auto& e : E) {
         // --------------------------------------------------
         // (HW TODO): Implement the gradient computation
-        
+        Eigen::Vector3d x1 = X.row(e.first);
+        Eigen::Vector3d x2 = X.row(e.second);
+        double length = (x1 - x2).norm();
+        double length_rest = E_rest_length[i];
+
+        g.row(e.first) += stiffness * (length - length_rest) * (x1 - x2) / length;
+        g.row(e.second) += stiffness * (length - length_rest) * (x2 - x1) / length;
         // --------------------------------------------------
         i++;
     }
@@ -121,27 +157,64 @@ Eigen::SparseMatrix<double> MassSpring::computeHessianSparse(double stiffness)
 
     unsigned i = 0;
     auto k = stiffness;
-    const auto I = Eigen::MatrixXd::Identity(3, 3);
+    const auto I = MatrixXd::Identity(3, 3);
+    std::vector<Trip_d> TripletList;
     for (const auto& e : E) {
         // --------------------------------------------------
         // (HW TODO): Implement the sparse version Hessian computation
         // Remember to consider fixed points 
         // You can also consider positive definiteness here
-       
+        Eigen::Vector3d x1 = X.row(e.first);
+        Eigen::Vector3d x2 = X.row(e.second);
+        MatrixXd x_xT = (x1 - x2) * (x1 - x2).transpose();
+        double length = (x1 - x2).norm();
+        double length_square = pow(length, 2); 
+        double length_rest = E_rest_length[i];
+        
+        auto H_e = k * x_xT / length_square +
+                   k * (1 - length_rest / length) * (I - x_xT / length_square);
+        double first = 3 * e.first;
+        double second = 3 * e.second;
+
+        for (int p = 0; p < 3; ++p) {
+            for (int q = 0; q < 3; ++q) {
+                if (H_e(p, q)) {
+                    TripletList.push_back(Trip_d(first + p, first + q, H_e(p, q)));
+                    TripletList.push_back(Trip_d(first + p, second + q, -H_e(p, q)));
+                    TripletList.push_back(Trip_d(second + p, first + q, -H_e(p, q)));
+                    TripletList.push_back(Trip_d(second + p, second + q, H_e(p, q)));
+                }     
+            }
+        }
         // --------------------------------------------------
         i++;
     }
-    
+    H.setFromTriplets(TripletList.begin(), TripletList.end());
     H.makeCompressed();
     return H;
 }
 
-
+Eigen::SparseMatrix<double> MassSpring::makeSPD(const Eigen::SparseMatrix<double>& A)
+{
+    Eigen::SelfAdjointEigenSolver<SparseMatrix_d> es(A);
+    double eigen_values_min = es.eigenvalues().minCoeff();
+    if (eigen_values_min >= 1e-10)
+        return A;
+    size_t size = A.rows();
+    double epsilon = 1e-10;
+    std::vector<Trip_d> TripletListFix;
+    for (size_t i = 0; i < size; ++i) {
+        TripletListFix.push_back(Trip_d(i, i, epsilon - eigen_values_min));
+    }
+    SparseMatrix_d A_fixed = A;  // size = [nx3, nx3]
+    A_fixed.setFromTriplets(TripletListFix.begin(), TripletListFix.end());
+    return A_fixed;
+}
 bool MassSpring::checkSPD(const Eigen::SparseMatrix<double>& A)
 {
     // Eigen::SimplicialLDLT<SparseMatrix_d> ldlt(A);
     // return ldlt.info() == Eigen::Success;
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es(A);
+    Eigen::SelfAdjointEigenSolver<SparseMatrix_d> es(A);
     auto eigen_values = es.eigenvalues();
     return eigen_values.minCoeff() >= 1e-10;
 }
@@ -160,6 +233,10 @@ Eigen::MatrixXd MassSpring::getSphereCollisionForce(Eigen::Vector3d center, doub
     Eigen::MatrixXd force = Eigen::MatrixXd::Zero(X.rows(), X.cols());
     for (int i = 0; i < X.rows(); i++) {
        // (HW Optional) Implement penalty-based force here 
+        Eigen::Vector3d x_c = X.row(i) - center.transpose();
+        double length = x_c.norm();
+        force.row(i) = collision_penalty_k *
+                       std::max(collision_scale_factor * radius - length, 0.) * x_c / length;
     }
     return force;
 }

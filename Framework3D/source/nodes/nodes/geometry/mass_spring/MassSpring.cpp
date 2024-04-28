@@ -50,16 +50,18 @@ void MassSpring::step()
         size_t size = 3 * n_vertices;
         SparseMatrix_d M(size, size);
         std::vector<Trip_d> TripletListM;
-        for (size_t i = 0; i < size; ++i) {
-            TripletListM.push_back(Trip_d(i, i, mass_per_vertex));
+        for (size_t i = 0; i < size; ++i) { 
+            if (!dirichlet_bc_mask[i / 3])
+                TripletListM.push_back(Trip_d(i, i, mass_per_vertex));
+            else 
+                TripletListM.push_back(Trip_d(i, i, pow(h, 2)));
         }
         M.setFromTriplets(TripletListM.begin(), TripletListM.end());
         SparseMatrix_d H_elastic =
-            M / pow(h, 2) + computeHessianSparse(stiffness);  // size = [nx3, nx3]
+            (M / pow(h, 2) + computeHessianSparse(stiffness));  // size = [nx3, nx3]
         H_elastic = makeSPD(H_elastic);
-            
-        Eigen::initParallel();
-        Eigen::ConjugateGradient<SparseMatrix_d> solver(H_elastic);
+        
+        Eigen::SparseLU<SparseMatrix_d> solver(H_elastic);
 
         // Solve Newton's search direction with linear solver
         MatrixXd f_int = -computeGrad(stiffness);
@@ -68,14 +70,17 @@ void MassSpring::step()
         if (enable_sphere_collision) {
             Y += acceleration_collision;
         }
-        for (size_t i = 0; i < n_vertices; ++i) {
+        /*for (size_t i = 0; i < n_vertices; ++i) {
             if (dirichlet_bc_mask[i])
                 Y.row(i) = X.row(i) - pow(h,2) * f_int.row(i) / mass_per_vertex;
-        } 
-        MatrixXd grad_g = -f_int + mass_per_vertex * (X - Y) / pow(h, 2); 
-        MatrixXd delta_X_flatten = -solver.solve(flatten(grad_g));
-        MatrixXd delta_X = unflatten(delta_X_flatten);
-        std::cout << X << std::endl << std::endl;
+        }*/
+        MatrixXd grad_g = (- f_int + mass_per_vertex * (X - Y) / pow(h, 2)); 
+        for (size_t i = 0; i < n_vertices; ++i) {
+            if (dirichlet_bc_mask[i])
+                grad_g.row(i).setZero();
+        }
+        
+        MatrixXd delta_X = unflatten(solver.solve(flatten(-grad_g)));
         // update X and vel 
         X += delta_X;
         vel = delta_X / h;
@@ -164,28 +169,31 @@ Eigen::SparseMatrix<double> MassSpring::computeHessianSparse(double stiffness)
         // (HW TODO): Implement the sparse version Hessian computation
         // Remember to consider fixed points 
         // You can also consider positive definiteness here
-        Eigen::Vector3d x1 = X.row(e.first);
-        Eigen::Vector3d x2 = X.row(e.second);
-        MatrixXd x_xT = (x1 - x2) * (x1 - x2).transpose();
-        double length = (x1 - x2).norm();
-        double length_square = pow(length, 2); 
+        Eigen::Vector3d x = X.row(e.first) - X.row(e.second);
+        MatrixXd x_xT = x * x.transpose();
+        double length = x.norm();
+        double length_squared = x.squaredNorm(); 
         double length_rest = E_rest_length[i];
         
-        auto H_e = k * x_xT / length_square +
-                   k * (1 - length_rest / length) * (I - x_xT / length_square);
-        double first = 3 * e.first;
-        double second = 3 * e.second;
+        MatrixXd H_e = k * x_xT / length_squared +
+                   k * (1 - length_rest / length) * (I - x_xT / length_squared);
+        size_t first = 3 * e.first;
+        size_t second = 3 * e.second;
 
-        for (int p = 0; p < 3; ++p) {
-            for (int q = 0; q < 3; ++q) {
-                if (H_e(p, q)) {
-                    TripletList.push_back(Trip_d(first + p, first + q, H_e(p, q)));
-                    TripletList.push_back(Trip_d(first + p, second + q, -H_e(p, q)));
-                    TripletList.push_back(Trip_d(second + p, first + q, -H_e(p, q)));
-                    TripletList.push_back(Trip_d(second + p, second + q, H_e(p, q)));
-                }     
-            }
-        }
+        if (!dirichlet_bc_mask[e.first]) 
+            for (int p = 0; p < 3; ++p) 
+                for (int q = 0; q < 3; ++q) 
+                    if (H_e(p, q)) {
+                        TripletList.push_back(Trip_d(first + p, first + q, H_e(p, q)));
+                        TripletList.push_back(Trip_d(first + p, second + q, -H_e(p, q)));
+                    }
+        if (!dirichlet_bc_mask[e.second])
+            for (int p = 0; p < 3; ++p)
+                for (int q = 0; q < 3; ++q)
+                    if (H_e(p, q)) {
+                        TripletList.push_back(Trip_d(second + p, first + q, -H_e(p, q)));
+                        TripletList.push_back(Trip_d(second + p, second + q, H_e(p, q)));
+                    }
         // --------------------------------------------------
         i++;
     }
@@ -194,29 +202,33 @@ Eigen::SparseMatrix<double> MassSpring::computeHessianSparse(double stiffness)
     return H;
 }
 
-Eigen::SparseMatrix<double> MassSpring::makeSPD(const Eigen::SparseMatrix<double>& A)
+SparseMatrix_d MassSpring::makeSPD(SparseMatrix_d& A)
 {
-    Eigen::SelfAdjointEigenSolver<SparseMatrix_d> es(A);
-    double eigen_values_min = es.eigenvalues().minCoeff();
-    if (eigen_values_min >= 1e-10)
+    if (checkSPD(A))
         return A;
+    std::cout << "The Matrix is not positive-definite!" << std::endl;
     size_t size = A.rows();
-    double epsilon = 1e-10;
+    double epsilon = 1e-7;
+
+    A.diagonal().array() += epsilon;
+    return A;
+
+
+    SparseMatrix_d A_fix(size, size);
     std::vector<Trip_d> TripletListFix;
     for (size_t i = 0; i < size; ++i) {
-        TripletListFix.push_back(Trip_d(i, i, epsilon - eigen_values_min));
+        TripletListFix.push_back(Trip_d(i, i, epsilon));
     }
-    SparseMatrix_d A_fixed = A;  // size = [nx3, nx3]
-    A_fixed.setFromTriplets(TripletListFix.begin(), TripletListFix.end());
-    return A_fixed;
+    A_fix.setFromTriplets(TripletListFix.begin(), TripletListFix.end());
+    return A + A_fix;
 }
-bool MassSpring::checkSPD(const Eigen::SparseMatrix<double>& A)
+bool MassSpring::checkSPD(const SparseMatrix_d& A)
 {
-    // Eigen::SimplicialLDLT<SparseMatrix_d> ldlt(A);
-    // return ldlt.info() == Eigen::Success;
-    Eigen::SelfAdjointEigenSolver<SparseMatrix_d> es(A);
+    Eigen::SimplicialLDLT<SparseMatrix_d> ldlt(A);
+    return ldlt.info() == Eigen::Success;
+    /*Eigen::SelfAdjointEigenSolver<SparseMatrix_d> es(A);
     auto eigen_values = es.eigenvalues();
-    return eigen_values.minCoeff() >= 1e-10;
+    return eigen_values.minCoeff() >= 1e-10;*/
 }
 
 void MassSpring::reset()

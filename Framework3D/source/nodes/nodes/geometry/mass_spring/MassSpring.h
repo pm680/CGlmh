@@ -14,15 +14,8 @@
 
 namespace USTC_CG::node_mass_spring {
 
-using Edge = std::pair<int, int>;
-struct hashEdge {
-    size_t operator()(const Edge &x) const
-    {
-        return x.first ^ x.second;
-    }
-};
-
 using namespace Eigen;
+using Edge = std::pair<int, int>;
 using EdgeSet = std::set<Edge>;
 using MatrixXd = Eigen::MatrixXd;
 using SparseMatrix_d = Eigen::SparseMatrix<double>;
@@ -47,8 +40,8 @@ class MassSpring {
     virtual Eigen::SparseMatrix<double> computeHessianSparse(double stiffness);
 
     // make matrix positive definite
-    Eigen::SparseMatrix<double> makeSPD(const Eigen::SparseMatrix<double> &A);
-    bool checkSPD(const Eigen::SparseMatrix<double> &A);
+    SparseMatrix_d makeSPD(SparseMatrix_d &A);
+    bool checkSPD(const SparseMatrix_d &A);
 
     Eigen::MatrixXd getVelocity() const
     {
@@ -60,7 +53,9 @@ class MassSpring {
     }
 
     // Detect collision and compute the penalty-based collision force with given sphere
-    Eigen::MatrixXd getSphereCollisionForce(Eigen::Vector3d center, double radius);
+    Eigen::MatrixXd getSphereCollisionForce(Eigen::Vector3d center, double radius);\
+
+    SparseMatrix_d KroneckerProduct_I(const MatrixXd &A);
 
     // Simulation parameters
     double stiffness = 1000.0;

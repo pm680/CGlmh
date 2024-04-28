@@ -90,9 +90,9 @@ static void node_mass_spring_declare(NodeDeclarationBuilder& b)
     b.add_input<decl::Float>("gravity").default_val(-9.8);
 
     // --------- HW Optional: if you implement sphere collision, please uncomment the following lines ------------
-    b.add_input<decl::Float>("collision penalty_k").default_val(10000).min(100).max(100000); 
+    b.add_input<decl::Float>("collision penalty_k").default_val(0.025).min(100).max(100000); 
     b.add_input<decl::Float>("collision scale factor").default_val(1.1).min(1.0).max(2.0); 
-    b.add_input<decl::Float>("sphere radius").default_val(0.4).min(0.0).max(5.0);; 
+    b.add_input<decl::Float>("sphere radius").default_val(0.4).min(0.0).max(5.0); 
     b.add_input<decl::Float3>("sphere center");
     // -----------------------------------------------------------------------------------------------------------
 
@@ -104,6 +104,7 @@ static void node_mass_spring_declare(NodeDeclarationBuilder& b)
 
     // Optional switches
     b.add_input<decl::Int>("enable Liu13").default_val(0).min(0).max(1);
+    b.add_input<decl::Int>("max iteration").default_val(100).min(0).max(1000);
     b.add_input<decl::Int>("enable sphere collision").default_val(0).min(0).max(1);
 
     // Current time in node system 
@@ -118,11 +119,15 @@ static void node_mass_spring_exec(ExeParams params)
 {
     auto time_code = params.get_input<float>("time_code");
 
-
     auto mass_spring = params.get_input<std::shared_ptr<MassSpring>>("Mass Spring");
 
     auto geometry = params.get_input<GOperandBase>("Mesh");
     auto mesh = geometry.get_component<MeshComponent>();
+    if (mesh->faceVertexCounts.size() == 0)
+    {
+        throw std::runtime_error("Read USD error.");
+    }
+
 
     if (time_code == 0) {  // If time = 0, reset and initialize the mass spring class
         if (mesh) {
@@ -133,11 +138,14 @@ static void node_mass_spring_exec(ExeParams params)
                 get_edges(usd_faces_to_eigen(mesh->faceVertexCounts, mesh->faceVertexIndices));
             auto vertices = usd_vertices_to_eigen(mesh->vertices);
             const float k = params.get_input<float>("stiffness");
+            const float h = params.get_input<float>("h");
 
             bool enable_liu13 =  params.get_input<int>("enable Liu13") == 1 ? true : false;
             if (enable_liu13) { 
                 // HW Optional 
-				mass_spring = std::make_shared<FastMassSpring>(vertices, edges, k);
+				mass_spring = std::make_shared<FastMassSpring>(
+                    vertices, edges, k, h, params.get_input<int>("max iteration"));
+                
 			}
 			else
 				mass_spring = std::make_shared<MassSpring>(vertices, edges);

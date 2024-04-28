@@ -9,9 +9,14 @@ class FastMassSpring : public MassSpring {
     FastMassSpring() = default;
     ~FastMassSpring() = default; 
 
-    FastMassSpring(const Eigen::MatrixXd& X, const EdgeSet& E, const float stiffness);
+    FastMassSpring(
+        const Eigen::MatrixXd& X,
+        const EdgeSet& E,
+        const float stiffness,
+        const float h,
+        unsigned max_iter);
     void step() override;
-    unsigned max_iter = 10; // (HW Optional) add UI for this parameter
+    unsigned max_iter = 100; // (HW Optional) add UI for this parameter
 
     SparseMatrix_d KroneckerProduct_I(const MatrixXd& A);
 

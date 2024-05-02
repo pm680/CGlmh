@@ -20,8 +20,6 @@ class FastMassSpring : public MassSpring {
 
     SparseMatrix_d KroneckerProduct_I(const MatrixXd& A);
 
-    SparseMatrix_d KroneckerProduct_I(const MatrixXd& A);
-
    protected:
     MatrixXd D;
 

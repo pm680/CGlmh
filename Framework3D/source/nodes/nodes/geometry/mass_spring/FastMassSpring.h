@@ -16,7 +16,9 @@ class FastMassSpring : public MassSpring {
         const float h,
         unsigned max_iter);
     void step() override;
-    unsigned max_iter = 100; // (HW Optional) add UI for this parameter
+    unsigned max_iter = 10; // (HW Optional) add UI for this parameter
+
+    SparseMatrix_d KroneckerProduct_I(const MatrixXd& A);
 
     SparseMatrix_d KroneckerProduct_I(const MatrixXd& A);
 

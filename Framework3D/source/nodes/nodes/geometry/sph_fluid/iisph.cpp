@@ -21,7 +21,7 @@ void IISPH::step()
 {
     // (HW Optional)
     ps_.assign_particles_to_cells();
-    ps_.searchNeighbors();
+    ps_.search_neighbors();
     
     compute_density();
     

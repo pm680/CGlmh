@@ -150,7 +150,7 @@ for (auto& p : ps_.particles()) {
 SPH中密度的计算公式为：
 
 $$
- \rho_i = \sum_{j+i} \left(\frac{m_j}{\rho_j} \right) m_j W(\mathbf{x}_ i - \mathbf{x}_ j, h) =  \sum_{j+i} m_j  W_{ij}
+ \rho_i = \sum_{j+i} \left(\frac{m_j}{\rho_j} \right) \rho_j W(\mathbf{x}_ i - \mathbf{x}_ j, h) =  \sum_{j+i} m_j  W_{ij}
 $$
 
 这里我们记 $W_{ij} = W(\mathbf{x}_i, \mathbf{x}_j, h)$， $j$ 表示粒子 $i$ 的所有邻居粒子。 在SPH方法中， $h$ 表示核函数半径，我们用 $\Delta t$ 来表示时间步长。
@@ -324,7 +324,7 @@ void SPHBase::advect()
 
 **注意，如果不处理边界，当流体粒子飞出仿真区域时（即`simulation_box_min`和`simulation_box_max`设定的范围时），会出现空间网格结构的`cell_idx out of range`报错。**
 
-## 5. 实例结果 & 节点图
+## 5. 示例结果 & 节点图
 
 我们提供了` ParticleSystem::sample_particle_pos_in_a_box`函数来从一个给定的box区域采样粒子，具体使用请见 [`node_sph_fluid.cpp`](../../../Framework3D/source/nodes/nodes/geometry/node_sph_fluid.cpp). 我们默认的粒子采样数是xyz三个轴25x25x25，可以根据机器性能自行调整（注意粒子采样数会影响一开始的密度估计，对仿真结果有影响）。
 
